@@ -564,6 +564,9 @@ var util = require('util'),
     sprites = require('sprites'),
     EventEmitter = events.EventEmitter2;
 
+// Export inheritance
+exports.inherits = events.inherits;
+
 //
 // Main component, does all coordination between children
 //
@@ -580,13 +583,16 @@ function UI(options) {
   this.height = 1;
 
   this.ctx = this.canvas.getContext('2d');
+  this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
   this.ctx.mozspritesmoothingEnabled = false;
   this.ctx.webkitspritesmoothingEnabled = false;
   this.ctx.msspritesmoothingEnabled = false;
 
-  this.cellWidth = options.cellWidth;
-  this.cellHeight = options.cellHeight;
-  this.zoneSize = options.zoneSize;
+  this.cellWidth = options.cell.width;
+  this.cellHeight = options.cell.height;
+  this.zoneSize = options.zone.size;
+
+  // Current center
   this.cx = 0;
   this.cy = 0;
 
@@ -665,8 +671,10 @@ UI.prototype.resize = function resize(width, height) {
   this.height = this.canvas.height = height;
 
   // Center canvas
-  this.canvas.style.marginLeft = (window.innerWidth - width) / 2 + 'px';
-  this.canvas.style.marginTop = (window.innerHeight - height) / 2 + 'px';
+  if (this.options.center !== false) {
+    this.canvas.style.marginLeft = (window.innerWidth - width) / 2 + 'px';
+    this.canvas.style.marginTop = (window.innerHeight - height) / 2 + 'px';
+  }
 };
 
 //
@@ -686,15 +694,6 @@ UI.prototype.render = function render() {
   if (!this._changed) return;
   this._changed = false;
 
-  // Timestamp is used later in animations
-  this._timestamp = +new Date;
-
-  this.ctx.save();
-
-  // Clear everything
-  this.ctx.fillStyle = 'black';
-  this.ctx.fillRect(0, 0, this.width, this.height);
-
   var centerZ = round(this.center.z);
 
   this.cx = round(this.width / 2 - this.centerProjection.x);
@@ -706,22 +705,20 @@ UI.prototype.render = function render() {
     zones[i].sort();
   }
 
+  this.ctx.save();
+  this.ctx.translate(this.cx, this.cy);
+
   // Draw items in zones level-by-level
   for (var i = 5; i >= -5; i--) {
     // Apply shadow between deep zones
     if (i > 0) {
-      this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
-      this.ctx.fillRect(0, 0, this.width, this.height);
+      this.ctx.fillRect(-this.cx, -this.cy, this.width, this.height);
     }
 
     for (var j = 0; j < zones.length; j++) {
-      this.ctx.save();
-      this.ctx.translate(this.cx, this.cy);
       zones[j].render(this.ctx, i + centerZ);
-      this.ctx.restore();
     }
   }
-
   this.ctx.restore();
 };
 
@@ -1025,19 +1022,21 @@ Zone.prototype.render = function render(ctx, z) {
 
     if (z !== item.rz) continue;
 
-    ctx.save();
+    var coverage = false;
+    if (item !== this.ui.player && z <= this.ui.player.rz) {
+      coverage = item.coverage(this.ui.player);
 
-    var coverage;
-    if (item !== this.ui.player &&
-        z <= this.ui.player.rz &&
-        (coverage = item.coverage(this.ui.player))) {
-      // Items covering player are transparent
-      ctx.globalAlpha = coverage;
+      if (coverage) {
+        // Items covering player are transparent
+        ctx.save();
+        ctx.globalAlpha = coverage;
+      }
     }
 
     item.render(ctx);
     item.postRender();
-    ctx.restore();
+
+    if (coverage) ctx.restore();
   }
 };
 
@@ -1176,6 +1175,11 @@ function Item(options) {
   // Common fields used by models
   this.type = options.type || null;
   this.sprite = options.sprite || null;
+  this.spriteCanvas = null;
+  this.spriteX = 0;
+  this.spriteY = 0;
+  this.spriteWidth = 0;
+  this.spriteHeight = 0;
   this.obstacle = options.obstacle || false;
   this.gravitable = options.gravitable || false;
 
@@ -1217,13 +1221,20 @@ Item.prototype.init = function init(zone) {
   this.ui = zone.ui;
   this.setPosition(this.x, this.y, this.z);
 
-  if (typeof this.sprite === 'string') {
-    this.setSprite(this.sprite);
-  }
+  if (this.sprite) this.setSprite(this.sprite);
 };
 
-Item.prototype.setSprite = function setSprite(name) {
-  this.sprite = this.ui.sprites[name];
+Item.prototype.setSprite = function setSprite(sprite) {
+  if (typeof sprite === 'string') {
+    this.sprite = this.ui.sprites[sprite];
+  } else {
+    this.sprite = sprite;
+  }
+  this.spriteCanvas = this.sprite.canvas;
+  this.spriteWidth = this.sprite.width;
+  this.spriteHeight = this.sprite.height;
+  this.spriteX = this.projectionX - this.sprite.x;
+  this.spriteY = this.projectionY - this.sprite.y;
 };
 
 //
@@ -1263,6 +1274,10 @@ Item.prototype.setPosition = function setPosition(x, y, z) {
   var p = this.ui.project(this.rx, this.ry, this.rz);
   this.projectionRX = p.x;
   this.projectionRY = p.y;
+
+  // Update sprite position
+  this.spriteX = this.projectionX - this.sprite.x;
+  this.spriteY = this.projectionY - this.sprite.y;
 
   // Force rerender
   this.ui._changed = true;
@@ -1310,11 +1325,11 @@ Item.prototype.reset = function reset() {
 Item.prototype.render = function render(ctx) {
   if (!this.sprite) return;
 
-  ctx.drawImage(this.sprite.elem,
-                this.projectionX - this.sprite.x,
-                this.projectionY - this.sprite.y,
-                this.sprite.width,
-                this.sprite.height);
+  ctx.drawImage(this.spriteCanvas,
+                this.spriteX,
+                this.spriteY,
+                this.spriteWidth,
+                this.spriteHeight);
 };
 
 //
@@ -1330,14 +1345,14 @@ Item.prototype.postRender = function postRender() {
     // Set start positions
     first.init();
 
-    if (first.start + first.interval <= this.ui._timestamp) {
+    if (first.start + first.interval <= Date.now()) {
       this.animation.shift();
       first.end();
       this.ui._changed = true;
       continue;
     }
 
-    first.run(this.ui._timestamp);
+    first.run();
     this.ui._changed = true;
     break;
   }
@@ -1414,7 +1429,7 @@ function ItemAnimation(item, props, interval, callback) {
   this.z = null;
 
   this.start = null;
-  this.interval = interval,
+  this.interval = interval || 1;
 
   this.callback = callback;
 };
@@ -1425,7 +1440,7 @@ function ItemAnimation(item, props, interval, callback) {
 ItemAnimation.prototype.init = function init() {
   if (this.start !== null) return;
 
-  this.start = +new Date;
+  this.start = Date.now();
   this.x = this.startX = this.item.x;
   this.y = this.startY = this.item.y;
   this.z = this.startZ = this.item.z;
@@ -1446,14 +1461,15 @@ ItemAnimation.prototype.init = function init() {
     this.x = this.startX;
     this.y = this.startY;
     this.z = this.startZ;
+    this.interval = 1;
   }
 };
 
 //
 // Run animation
 //
-ItemAnimation.prototype.run = function run(timestamp) {
-  var percent = (timestamp - this.start) / this.interval;
+ItemAnimation.prototype.run = function run() {
+  var percent = (Date.now() - this.start) / this.interval;
 
   this.item.setPosition(this.startX + (this.x - this.startX) * percent,
                         this.startY + (this.y - this.startY) * percent,
@@ -1481,6 +1497,7 @@ exports.load = function load(urls, callback) {
 
   spriteIds.forEach(function(id) {
     var img = new Image(),
+        canvas = document.createElement('canvas'),
         match = urls[id].match(/^(.*)#(\d+)x(\d+)$/),
         once = false;
 
@@ -1489,7 +1506,8 @@ exports.load = function load(urls, callback) {
       height: 0,
       x: parseInt(match[2], 10),
       y: parseInt(match[3], 10),
-      elem: img
+      elem: img,
+      canvas: canvas
     };
 
     img.onload = function onload() {
@@ -1498,6 +1516,10 @@ exports.load = function load(urls, callback) {
 
       sprites[id].width = img.width;
       sprites[id].height = img.height;
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+
       if (--left === 0) return onSprites();
     };
     img.src = match[1];
