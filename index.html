@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Isodrive by indutny</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>Isodrive</h1>
+        <h2>Isometric game engine</h2>
+        <a href="https://github.com/indutny/isodrive" class="button"><small>View project on</small>GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h1>Isodrive</h1>
+
+<p>Isometric game engine.</p>
+
+<h2>Usage</h2>
+
+<p>Pick one script from <code>dist/</code> folder and create Isometric UI in following way:</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">ui</span> <span class="o">=</span> <span class="nx">Isodrive</span><span class="p">.</span><span class="nx">create</span><span class="p">({</span>
+  <span class="c1">// Id or &lt;canvas&gt; element itself</span>
+  <span class="nx">canvas</span><span class="o">:</span> <span class="s1">'field'</span><span class="p">,</span>
+
+  <span class="c1">// Hashmap of sprites</span>
+  <span class="nx">sprites</span><span class="o">:</span> <span class="p">{</span>
+    <span class="c1">// Property name - sprite's id,</span>
+    <span class="c1">// Value - "url" # "x-offset" x "y-offset"</span>
+    <span class="nx">block</span><span class="o">:</span> <span class="s1">'/images/block.png#32x16'</span><span class="p">,</span>
+    <span class="nx">player</span><span class="o">:</span> <span class="s1">'/images/player.png#32x12'</span>
+  <span class="p">},</span>
+
+  <span class="c1">// Isometric cell properties</span>
+  <span class="nx">cell</span><span class="o">:</span> <span class="p">{</span>
+    <span class="nx">width</span><span class="o">:</span> <span class="mi">64</span><span class="p">,</span>
+    <span class="nx">height</span><span class="o">:</span> <span class="mi">32</span>
+  <span class="p">},</span>
+
+  <span class="c1">// Zone configuration</span>
+  <span class="nx">zone</span><span class="o">:</span> <span class="p">{</span>
+    <span class="nx">size</span><span class="o">:</span> <span class="mi">8</span>
+  <span class="p">}</span>
+<span class="p">})</span>
+</pre></div>
+
+<h3>Items</h3>
+
+<p>Engine consists of zones, which are basically cubes with width of 2 zone sizes
+from options, and zones consists of items. Item is basically a sprite with
+position and some class methods.</p>
+
+<p>All items are instances of <code>Isodrive.Item</code> class. You can instaniate by calling:</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">item</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Isodrive</span><span class="p">.</span><span class="nx">Item</span><span class="p">({</span>
+  <span class="c1">// Item id, must be unique</span>
+  <span class="nx">id</span><span class="o">:</span> <span class="mi">123</span><span class="p">,</span>
+
+  <span class="c1">// Item type, not used by engine itself</span>
+  <span class="nx">type</span><span class="o">:</span> <span class="s1">'some-user-specific-type'</span><span class="p">,</span>
+
+  <span class="c1">// Id of sprite to render</span>
+  <span class="nx">sprite</span><span class="o">:</span> <span class="s1">'sprite'</span><span class="p">,</span>
+
+  <span class="c1">// Position of item</span>
+  <span class="nx">x</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="nx">y</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="nx">z</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+
+  <span class="c1">// If true - players won't be able to pass through this item</span>
+  <span class="nx">obstacle</span><span class="o">:</span> <span class="kc">true</span><span class="p">,</span>
+
+  <span class="c1">// If true - gravitation applies to the item (NOT IMPLEMENTED YET!)</span>
+  <span class="nx">gravitable</span><span class="o">:</span> <span class="kc">true</span>
+<span class="p">});</span>
+</pre></div>
+
+<p>And you can add item to the map by calling <code>ui.add(item)</code>.</p>
+
+<h3>Player item</h3>
+
+<p>Only one item is required to exists and to be initialized first - player item.
+Map will follow player's movement and zones will be loaded if player will reach
+their boundaries.</p>
+
+<p>You should set map's player before inserting any other items: <code>ui.setPlayer(p)</code>.</p>
+
+<h3>Item methods</h3>
+
+<h4>Item#setSprite(id)</h4>
+
+<p>Change item's sprite</p>
+
+<h4>Item#animate({ props }, interval, callback)</h4>
+
+<p>A jquery-like animation method. Following props are available: <code>x</code>, <code>y</code>, <code>z</code>,
+<code>dx</code>, <code>dy</code>, <code>dz</code>, <code>sprite</code>.</p>
+
+<h4>Item#move(dx, dy, dz)</h4>
+
+<p>Move item by relative offset</p>
+
+<h4>Item#setPosition(x, y, z)</h4>
+
+<p>Set item's absolute position.</p>
+
+<h4>Item#reset()</h4>
+
+<p>Reset all queued animations.</p>
+
+<h4>Item#remove()</h4>
+
+<p>Remove item from map.</p>
+
+<h4>Item#command(type, args, callback)</h4>
+
+<p>Abstraction, only one command is implemented by default - <code>remove</code>. Could be
+overrided by subclasses. On execution emits <code>command</code> event.</p>
+
+<h3>Isodrive methods</h3>
+
+<p>Isodrive map has it's own methods too.</p>
+
+<h4>Isodrive#setPlayer(item)</h4>
+
+<p>Sets map's player. Map will follow player if it'll change it's position.</p>
+
+<h4>Isodrive#hasObstacle(x, y, z)</h4>
+
+<p>Returns <code>Item</code> instance if there's obstacle on specified position. Also may
+return <code>true</code> if specified position is out of loaded zones' ranges. Otherwise
+returns <code>false</code>.</p>
+
+<h4>Isodrive#getItem(id)</h4>
+
+<p>Finds item by id.</p>
+
+<h4>Isodrive#player</h4>
+
+<p>Current map's player.</p>
+
+<h3>Isodrive Events</h3>
+
+<p>Result of <code>Isodrive.create()</code> is an instance of <a href="https://github.com/hij1nx/eventemitter2">EventEmitter2</a>. And can emit
+following events:</p>
+
+<h4><code>load</code></h4>
+
+<p>Emitted once ui is ready to be rendered. Happens once all sprites are loaded.</p>
+
+<h4><code>zone:load</code></h4>
+
+<p>Emitted once player enters new zone and engine wants you to fetch items from
+server.</p>
+
+<p>Zone configuration consists of following properties: <code>lx</code>, <code>ly</code>, <code>lz</code>, <code>rx</code>,
+<code>ry</code>, <code>rz</code>. Which basically means inclusive left and exclusive right positions
+of zone ranges.</p>
+
+<h4>LICENSE</h4>
+
+<p>Copyright (c) 2012, Fedor Indutny.</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/indutny/isodrive/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/indutny/isodrive/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/indutny/isodrive"></a> is maintained by <a href="https://github.com/indutny">indutny</a>.</p>
+
+          <p>This page was generated by <a href="pages.github.com">GitHub Pages</a> using the Architect theme by <a href="http://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+            <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-36693665-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+  </body>
+</html>
