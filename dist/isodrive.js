@@ -1029,6 +1029,7 @@ Zone.prototype.render = function render(ctx, z) {
   for (var i = 0; i < this.items.length; i++) {
     var item = this.items[i];
 
+    // We're rendering layer-by-layer
     if (z !== item.rz) continue;
 
     var coverage = false;
