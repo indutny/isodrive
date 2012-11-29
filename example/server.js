@@ -4,7 +4,6 @@ var http = require('http'),
 var app = connect();
 
 app.use(connect.static(__dirname + '/public'));
-app.use(connect.static(__dirname + '/../dist'));
 
 http.createServer(app).listen(8000, function() {
   var addr = this.address();
