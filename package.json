@@ -1,0 +1,9 @@
+{
+  "name": "isodrive",
+  "version": "0.0.0",
+  "dependencies": {
+    "browserbuild": "~0.6.0",
+    "uglify-js": "~2.2.1",
+    "connect": "~2.7.0"
+  }
+}
