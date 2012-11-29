@@ -823,6 +823,7 @@ UI.prototype.render = function render() {
   // Sort items in zones
   var zones = this.zones;
   for (var i = 0; i < zones.length; i++) {
+    if (!zones[i].isVisible(centerZ)) continue;
     zones[i].sort();
   }
 
@@ -837,6 +838,7 @@ UI.prototype.render = function render() {
     }
 
     for (var j = 0; j < zones.length; j++) {
+      if (!zones[j].isVisible(centerZ)) continue;
       zones[j].render(this.ctx, i + centerZ);
     }
   }
@@ -1086,6 +1088,13 @@ Zone.prototype.containsRaw = function containsRaw(x, y, z) {
   return this.lx <= x && x < this.rx &&
          this.ly <= y && y < this.ry &&
          this.lz <= z && z < this.rz;
+};
+
+//
+// Checks if zone is visible from specific depth
+//
+Zone.prototype.isVisible = function isVisible(z) {
+  return this.lz <= z + 5 || z - 5 <= this.rz;
 };
 
 //

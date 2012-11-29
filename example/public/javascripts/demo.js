@@ -48,7 +48,6 @@
     ui.on('zone:load', function(zone) {
       console.log('Loading zone: ', zone);
       var middle = (zone.lz + zone.rz) >> 1;
-      if (middle !== 0) return;
 
       // Floor
       for (var x = zone.lx; x < zone.rx; x++) {
