@@ -8,8 +8,8 @@
     sprites: {
       // Property name - sprite's id,
       // Value - "url" # "x-offset" x "y-offset"
-      block: '/images/block.png#32x16',
-      player: '/images/player.png#32x12'
+      block: 'images/block.png#32x16',
+      player: 'images/player.png#32x12'
     },
 
     // Isometric cell properties
