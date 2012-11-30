@@ -20,7 +20,7 @@
 
     // Zone configuration
     zone: {
-      size: 8
+      size: 16
     },
     fps: true
   });

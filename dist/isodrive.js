@@ -600,6 +600,8 @@ function Item(options) {
   this.spriteData = null;
   this.spriteX = 0;
   this.spriteY = 0;
+  this.spriteRight = 0;
+  this.spriteBottom = 0;
   this.spriteWidth = 0;
   this.spriteHeight = 0;
   this.obstacle = options.obstacle || false;
@@ -657,6 +659,8 @@ Item.prototype.setSprite = function setSprite(sprite) {
   this.spriteHeight = this.sprite.height;
   this.spriteX = this.projectionX - this.sprite.x;
   this.spriteY = this.projectionY - this.sprite.y;
+  this.spriteRight = this.spriteX + this.spriteWidth;
+  this.spriteBottom = this.spriteY + this.spriteHeight;
 };
 
 //
@@ -700,6 +704,8 @@ Item.prototype.setPosition = function setPosition(x, y, z) {
   // Update sprite position
   this.spriteX = this.projectionX - this.sprite.x;
   this.spriteY = this.projectionY - this.sprite.y;
+  this.spriteRight = this.spriteX + this.spriteWidth;
+  this.spriteBottom = this.spriteY + this.spriteHeight;
 
   // Force rerender
   this.ui._changed = true;
@@ -740,6 +746,11 @@ Item.prototype.reset = function reset() {
     a.end();
   }
   this.animation = [];
+};
+
+Item.prototype.isInRect = function isInRect(lx, ly, rx, ry) {
+  return this.spriteRight >= lx && this.spriteX <= rx &&
+         this.spriteBottom >= ly && this.spriteY <= ry;
 };
 
 //
@@ -1488,13 +1499,19 @@ Zone.prototype.sort = function sort() {
 // Render zone and items in it
 //
 Zone.prototype.render = function render(ctx, z) {
-  var last = this._last;
+  var last = this._last,
+      lx = -this.ui.cx,
+      rx = -this.ui.cx + this.ui.width,
+      ly = -this.ui.cy,
+      ry = -this.ui.cy + this.ui.height;
+
   for (var i = last; i < this.items.length; i++) {
     var item = this.items[i];
 
     // We're rendering layer-by-layer
     if (item.rz < z) break;
     if (z !== item.rz) continue;
+    if (!item.isInRect(lx, ly, rx, ry)) continue;
 
     last = i;
 
