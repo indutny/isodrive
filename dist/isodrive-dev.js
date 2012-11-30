@@ -704,10 +704,6 @@ function UI(options) {
   this.height = 1;
 
   this.ctx = this.canvas.getContext('2d');
-  this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
-  this.ctx.mozspritesmoothingEnabled = false;
-  this.ctx.webkitspritesmoothingEnabled = false;
-  this.ctx.msspritesmoothingEnabled = false;
 
   this.cellWidth = options.cell.width;
   this.cellHeight = options.cell.height;
@@ -724,6 +720,11 @@ function UI(options) {
   this.centerProjection = this.project(this.center);
   this.player = null;
   this._changed = false;
+  this._renderTick = 0;
+
+  if (this.options.fps) {
+    this.fps = 0;
+  }
 
   this.init();
 };
@@ -738,6 +739,20 @@ exports.create = function create(options) {
 //
 UI.prototype.init = function init() {
   var self = this;
+
+  // Display fps
+  if (this.options.fps) {
+    setInterval(function() {
+      location.hash = self.fps;
+      self.fps = 0;
+    }, 1000);
+  }
+
+  // Configure canvas
+  this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  this.ctx.mozspritesmoothingEnabled = false;
+  this.ctx.webkitspritesmoothingEnabled = false;
+  this.ctx.msspritesmoothingEnabled = false;
 
   // Resize UI on window resize
   function onresize() {
@@ -814,6 +829,9 @@ UI.prototype.project = function project(x, y, z) {
 UI.prototype.render = function render() {
   if (!this._changed) return;
   this._changed = false;
+  this.ctx.clearRect(0, 0, this.width, this.height);
+
+  if (this.options.fps) this.fps++;
 
   var centerZ = round(this.center.z);
 
@@ -824,8 +842,11 @@ UI.prototype.render = function render() {
   var zones = this.zones;
   for (var i = 0; i < zones.length; i++) {
     if (!zones[i].isVisible(centerZ)) continue;
+    zones[i]._last = 0;
     zones[i].sort();
   }
+
+  this._renderTick = ~this._renderTick;
 
   this.ctx.save();
   this.ctx.translate(this.cx, this.cy);
@@ -842,6 +863,12 @@ UI.prototype.render = function render() {
       zones[j].render(this.ctx, i + centerZ);
     }
   }
+
+  // Apply animations and other stuff
+  for (var j = 0; j < zones.length; j++) {
+    zones[j].postRender();
+  }
+
   this.ctx.restore();
 };
 
@@ -1051,6 +1078,10 @@ function Zone(x, y, z) {
   this.ry = 0;
   this.rz = 0;
 
+  // Last render index
+  this._last = 0;
+  this._changed = false;
+
   this.map = {};
 
   this.ui = null;
@@ -1094,7 +1125,7 @@ Zone.prototype.containsRaw = function containsRaw(x, y, z) {
 // Checks if zone is visible from specific depth
 //
 Zone.prototype.isVisible = function isVisible(z) {
-  return this.lz <= z + 5 || z - 5 <= this.rz;
+  return this.lz <= z + 5 && z - 5 <= this.rz;
 };
 
 //
@@ -1121,6 +1152,9 @@ Zone.compare = function compare(a, b) {
 // Sort items in zone
 //
 Zone.prototype.sort = function sort() {
+  if (!this._changed) return;
+  this._changed = false;
+
   var misses = [];
   for (var i = 0; i < this.items.length - 1; i++) {
     var current = this.items[i],
@@ -1147,11 +1181,15 @@ Zone.prototype.sort = function sort() {
 // Render zone and items in it
 //
 Zone.prototype.render = function render(ctx, z) {
-  for (var i = 0; i < this.items.length; i++) {
+  var last = this._last;
+  for (var i = last; i < this.items.length; i++) {
     var item = this.items[i];
 
     // We're rendering layer-by-layer
+    if (item.rz < z) break;
     if (z !== item.rz) continue;
+
+    last = i;
 
     var coverage = false;
     if (item !== this.ui.player && z <= this.ui.player.rz) {
@@ -1165,9 +1203,20 @@ Zone.prototype.render = function render(ctx, z) {
     }
 
     item.render(ctx);
-    item.postRender();
 
     if (coverage) ctx.restore();
+  }
+
+  this._last = last;
+};
+
+//
+// Invoke postRender on all items
+//
+Zone.prototype.postRender = function postRender() {
+  for (var i = 0; i < this.items.length; i++) {
+    var item = this.items[i];
+    item.postRender();
   }
 };
 
@@ -1271,7 +1320,9 @@ Zone.prototype.getItemAtPos = function getItemAtPos(x, y, z) {
         cmp = Item.compare(cell, item);
 
     if (cmp > 0) break;
-    if (x === item.rx && y === item.ry && z === item.rz) return item;
+    if (round(x) === item.rx && round(y) === item.ry && round(z) === item.rz) {
+      return item;
+    }
   }
 
   return false;
@@ -1302,6 +1353,9 @@ function Item(options) {
   // References to containers
   this.zone = null;
   this.ui = null;
+
+  // For rendering
+  this._renderTick = null;
 
   // Common fields used by models
   this.type = options.type || null;
@@ -1412,6 +1466,7 @@ Item.prototype.setPosition = function setPosition(x, y, z) {
 
   // Force rerender
   this.ui._changed = true;
+  this.zone._changed = true;
 };
 Item.prototype._setPosition = Item.prototype.setPosition;
 
@@ -1454,13 +1509,12 @@ Item.prototype.reset = function reset() {
 // Render callback
 //
 Item.prototype.render = function render(ctx) {
-  if (!this.sprite) return;
+  if (!this.sprite || this._renderTick === this.ui._renderTick) return;
+  this._renderTick = this.ui._renderTick;
 
   ctx.drawImage(this.spriteCanvas,
                 this.spriteX,
-                this.spriteY,
-                this.spriteWidth,
-                this.spriteHeight);
+                this.spriteY);
 };
 
 //
@@ -1602,9 +1656,11 @@ ItemAnimation.prototype.init = function init() {
 ItemAnimation.prototype.run = function run() {
   var percent = (Date.now() - this.start) / this.interval;
 
-  this.item.setPosition(this.startX + (this.x - this.startX) * percent,
-                        this.startY + (this.y - this.startY) * percent,
-                        this.startZ + (this.z - this.startZ) * percent);
+  var x = this.startX + (this.x - this.startX) * percent,
+      y = this.startY + (this.y - this.startY) * percent,
+      z = this.startZ + (this.z - this.startZ) * percent;
+
+  this.item.setPosition(x, y, z);
 };
 
 //
