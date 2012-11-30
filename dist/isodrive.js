@@ -628,7 +628,6 @@ UI.prototype.init = function init() {
   }
 
   // Configure canvas
-  this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
   this.ctx.mozspritesmoothingEnabled = false;
   this.ctx.webkitspritesmoothingEnabled = false;
   this.ctx.msspritesmoothingEnabled = false;
@@ -734,6 +733,7 @@ UI.prototype.render = function render() {
   for (var i = 5; i >= -5; i--) {
     // Apply shadow between deep zones
     if (i > 0) {
+      this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
       this.ctx.fillRect(-this.cx, -this.cy, this.width, this.height);
     }
 
@@ -1239,7 +1239,7 @@ function Item(options) {
   // Common fields used by models
   this.type = options.type || null;
   this.sprite = options.sprite || null;
-  this.spriteCanvas = null;
+  this.spriteData = null;
   this.spriteX = 0;
   this.spriteY = 0;
   this.spriteWidth = 0;
@@ -1294,7 +1294,7 @@ Item.prototype.setSprite = function setSprite(sprite) {
   } else {
     this.sprite = sprite;
   }
-  this.spriteCanvas = this.sprite.canvas;
+  this.spriteData = this.sprite.elem;
   this.spriteWidth = this.sprite.width;
   this.spriteHeight = this.sprite.height;
   this.spriteX = this.projectionX - this.sprite.x;
@@ -1391,9 +1391,15 @@ Item.prototype.render = function render(ctx) {
   if (!this.sprite || this._renderTick === this.ui._renderTick) return;
   this._renderTick = this.ui._renderTick;
 
-  ctx.drawImage(this.spriteCanvas,
+  ctx.drawImage(this.spriteData,
+                0,
+                0,
+                this.spriteWidth,
+                this.spriteHeight,
                 this.spriteX,
-                this.spriteY);
+                this.spriteY,
+                this.spriteWidth,
+                this.spriteHeight);
 };
 
 //
@@ -1563,7 +1569,6 @@ exports.load = function load(urls, callback) {
 
   spriteIds.forEach(function(id) {
     var img = new Image(),
-        canvas = document.createElement('canvas'),
         match = urls[id].match(/^(.*)#(\d+)x(\d+)$/),
         once = false;
 
@@ -1572,8 +1577,7 @@ exports.load = function load(urls, callback) {
       height: 0,
       x: parseInt(match[2], 10),
       y: parseInt(match[3], 10),
-      elem: img,
-      canvas: canvas
+      elem: img
     };
 
     img.onload = function onload() {
@@ -1582,9 +1586,6 @@ exports.load = function load(urls, callback) {
 
       sprites[id].width = img.width;
       sprites[id].height = img.height;
-      canvas.width = img.width;
-      canvas.height = img.height;
-      canvas.getContext('2d').drawImage(img, 0, 0);
 
       if (--left === 0) return onSprites();
     };

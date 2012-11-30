@@ -21,7 +21,8 @@
     // Zone configuration
     zone: {
       size: 8
-    }
+    },
+    fps: true
   });
 
   // First of all, we must wait for all sprites to load before drawing anything
